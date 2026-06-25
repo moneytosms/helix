@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <sys/utsname.h>
 
+int last_exit_status=0;
+
 int main() {
   char input[1024];
   struct utsname info;
@@ -16,7 +18,16 @@ int main() {
     char *hostname = info.nodename;
     char *username = getenv("USER");
 
-    printf("\033[36m%s \033[0mon \033[33m%s \033[32m❯ \033[0m", username, hostname);
+    const char *chevron =
+        (last_exit_status == 0)
+            ? "\033[32m❯"
+            : "\033[31m❯";
+
+    printf("\033[36m%s \033[0mon \033[33m%s %s \033[0m",
+           username,
+           hostname,
+           chevron);
+
     fflush(stdout);
     if (!fgets(input, sizeof(input), stdin)) {
       break;
@@ -33,6 +44,7 @@ int main() {
 
     if (is_builtin(tokens.tokens[0])) {
       if (run_builtin(tokens)) {
+        free_tokens(tokens);
         continue;
       }
     free_tokens(tokens);

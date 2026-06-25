@@ -9,11 +9,14 @@ typedef struct {
     int count;
 } TokenList;
 
+
 TokenList tokenize(char *input) ;
 void free_tokens(TokenList tokens);
 
 void execute(TokenList *tokens);
 int is_builtin(char *cmd);
 int run_builtin(TokenList tokens);
+
+extern int last_exit_status;
 
 #endif
