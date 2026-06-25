@@ -1,0 +1,50 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-g",
+      "-fsanitize=address",
+      "-Wall",
+      "-Iinclude",
+      "-o",
+      "helix",
+      "src/executor.c"
+    ],
+    "directory": "/mnt/d/Projects/helix",
+    "file": "/mnt/d/Projects/helix/src/executor.c",
+    "output": "/mnt/d/Projects/helix/helix"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-g",
+      "-fsanitize=address",
+      "-Wall",
+      "-Iinclude",
+      "-o",
+      "helix",
+      "src/lexer.c"
+    ],
+    "directory": "/mnt/d/Projects/helix",
+    "file": "/mnt/d/Projects/helix/src/lexer.c",
+    "output": "/mnt/d/Projects/helix/helix"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-g",
+      "-fsanitize=address",
+      "-Wall",
+      "-Iinclude",
+      "-o",
+      "helix",
+      "src/main.c"
+    ],
+    "directory": "/mnt/d/Projects/helix",
+    "file": "/mnt/d/Projects/helix/src/main.c",
+    "output": "/mnt/d/Projects/helix/helix"
+  }
+]
