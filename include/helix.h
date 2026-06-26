@@ -14,8 +14,6 @@ TokenList tokenize(char *input) ;
 void free_tokens(TokenList tokens);
 
 void execute(TokenList *tokens);
-int is_builtin(char *cmd);
-int run_builtin(TokenList tokens);
 
 extern int last_exit_status;
 
@@ -32,7 +30,11 @@ typedef struct {
   int num_cmds;
 } Pipeline;
 
+Pipeline parse_pipeline(char **tokens);
+int execute_pipeline(Pipeline *pipeline);
+void free_pipeline(Pipeline pipeline);
 
-
+int run_builtin(Command *cmd);
+int is_builtin(char *cmd);
 
 #endif

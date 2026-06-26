@@ -3,57 +3,162 @@
 #include <stdio.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <string.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
+int execute_pipeline(Pipeline *pipeline)
+{
+    if (pipeline == NULL || pipeline->num_cmds == 0)
+        return EXIT_SUCCESS;
 
-void execute(TokenList *tokens) {
-  char **args = tokens->tokens;
-  pid_t pid;
-  int status;
-  
-  pid = fork();
-
-  switch(pid){
-    case -1:
-      perror("fork");
-      exit(EXIT_FAILURE);
-    case 0:
-    if (strcmp(args[0], "ls") == 0) {
-        int argc = tokens->count;
-    
-        char **new_args = malloc((argc + 3) * sizeof(char *));
-        if (!new_args) {
-            perror("malloc");
-            exit(EXIT_FAILURE);
-        }
-    
-        new_args[0] = "eza";
-        new_args[1] = "--icons";
-        new_args[2] = "--group-directories-first";
-    
-        for (int i = 1; i < argc; i++) {
-            new_args[i + 2] = args[i];
-        }
-    
-        new_args[argc + 2] = NULL;
-    
-        execvp("eza", new_args);
-    
-        perror("eza");
-        free(new_args);
-        exit(127);
+    if (pipeline->num_cmds == 1 &&
+        pipeline->cmds[0].args != NULL &&
+        is_builtin(pipeline->cmds[0].args[0]))
+    {
+        return run_builtin(&pipeline->cmds[0]);
     }
-      execvp(args[0], args);
-      perror(args[0]);
-      free_tokens(*tokens);
-      exit(127);
-    default:
-    waitpid(pid, &status, 0);
-    
-    if (WIFEXITED(status)) {
-        last_exit_status = WEXITSTATUS(status);
-    } else if (WIFSIGNALED(status)) {
-        last_exit_status = 128 + WTERMSIG(status);
+
+    int prev_pipe_read = -1;
+    pid_t pids[pipeline->num_cmds];
+
+    for (int i = 0; i < pipeline->num_cmds; i++) {
+
+        Command *cmd = &pipeline->cmds[i];
+
+        int pipefd[2];
+        int has_next = (i < pipeline->num_cmds - 1);
+
+        if (has_next) {
+            if (pipe(pipefd) == -1) {
+                perror("pipe");
+                return EXIT_FAILURE;
+            }
+        }
+
+        pid_t pid = fork();
+
+        if (pid == -1) {
+            perror("fork");
+            return EXIT_FAILURE;
+        }
+
+        if (pid == 0) {
+
+            /* ---------- Pipeline input ---------- */
+
+            if (prev_pipe_read != -1) {
+                if (dup2(prev_pipe_read, STDIN_FILENO) == -1) {
+                    perror("dup2");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            /* ---------- Pipeline output ---------- */
+
+            if (has_next) {
+                if (dup2(pipefd[1], STDOUT_FILENO) == -1) {
+                    perror("dup2");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            /* ---------- Input redirection ---------- */
+
+            if (cmd->infile != NULL) {
+
+                int fd = open(cmd->infile, O_RDONLY);
+
+                if (fd == -1) {
+                    perror(cmd->infile);
+                    exit(EXIT_FAILURE);
+                }
+
+                if (dup2(fd, STDIN_FILENO) == -1) {
+                    perror("dup2");
+                    close(fd);
+                    exit(EXIT_FAILURE);
+                }
+
+                close(fd);
+            }
+
+            /* ---------- Output redirection ---------- */
+
+            if (cmd->outfile != NULL) {
+
+                int flags = O_WRONLY | O_CREAT;
+
+                if (cmd->append)
+                    flags |= O_APPEND;
+                else
+                    flags |= O_TRUNC;
+
+                int fd = open(cmd->outfile, flags, 0644);
+
+                if (fd == -1) {
+                    perror(cmd->outfile);
+                    exit(EXIT_FAILURE);
+                }
+
+                if (dup2(fd, STDOUT_FILENO) == -1) {
+                    perror("dup2");
+                    close(fd);
+                    exit(EXIT_FAILURE);
+                }
+
+                close(fd);
+            }
+
+            /* ---------- Cleanup ---------- */
+
+            if (prev_pipe_read != -1)
+                close(prev_pipe_read);
+
+            if (has_next) {
+                close(pipefd[0]);
+                close(pipefd[1]);
+            }
+
+            execvp(cmd->args[0], cmd->args);
+
+            perror(cmd->args[0]);
+            exit(127);
+        }
+
+        /* ---------- Parent ---------- */
+
+        pids[i] = pid;
+
+        if (prev_pipe_read != -1)
+            close(prev_pipe_read);
+
+        if (has_next) {
+            close(pipefd[1]);
+            prev_pipe_read = pipefd[0];
+        } else {
+            prev_pipe_read = -1;
+        }
     }
-  }
+
+    int status = 0;
+
+    for (int i = 0; i < pipeline->num_cmds; i++) {
+        if (waitpid(pids[i], &status, 0) == -1) {
+            perror("waitpid");
+            return EXIT_FAILURE;
+        }
+    }
+
+    if (WIFEXITED(status))
+        return WEXITSTATUS(status);
+
+    return EXIT_FAILURE;
+}
+
+void free_pipeline(Pipeline pipeline)
+{
+    for (int i = 0; i < pipeline.num_cmds; i++)
+        free(pipeline.cmds[i].args);
+
+    free(pipeline.cmds);
 }

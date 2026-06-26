@@ -5,56 +5,53 @@
 
 int last_exit_status=0;
 
-int main() {
-  char input[1024];
-  struct utsname info;
-  while (1) {
+int main(void)
+{
+    char input[1024];
+    struct utsname info;
 
-    if (uname(&info)) {
-      perror("uname");
-      return 1;
-    }
+    while (1) {
 
-    char *hostname = info.nodename;
-    char *username = getenv("USER");
+        if (uname(&info) == -1) {
+            perror("uname");
+            return EXIT_FAILURE;
+        }
 
-    const char *chevron =
-        (last_exit_status == 0)
-            ? "\033[32m❯"
-            : "\033[31m❯";
+        char *hostname = info.nodename;
+        char *username = getenv("USER");
 
-    printf("\033[36m%s \033[0mon \033[33m%s %s \033[0m",
-           username,
-           hostname,
-           chevron);
+        const char *chevron =
+            (last_exit_status == 0)
+                ? "\033[32m❯"
+                : "\033[31m❯";
 
-    fflush(stdout);
-    if (!fgets(input, sizeof(input), stdin)) {
-      break;
-    }
+        printf("\033[36m%s \033[0mon \033[33m%s %s \033[0m",
+               username,
+               hostname,
+               chevron);
 
-    TokenList tokens = tokenize(input);
-    if (tokens.tokens[0] == NULL) {
-      free_tokens(tokens);
-      continue;
-    }
-    // for (int i = 0; i < tokens.count; i++) {
-    //   printf("%d : %s \n", i, tokens.tokens[i]);
-    // }
+        fflush(stdout);
 
-    if (is_builtin(tokens.tokens[0])) {
-      if (run_builtin(tokens)) {
+        if (!fgets(input, sizeof(input), stdin))
+            break;
+
+        TokenList tokens = tokenize(input);
+
+        if (tokens.tokens[0] == NULL) {
+            free_tokens(tokens);
+            continue;
+        }
+
+        Pipeline pipeline = parse_pipeline(tokens.tokens);
+
+        last_exit_status = execute_pipeline(&pipeline);
+
+        free_pipeline(pipeline);
         free_tokens(tokens);
-        continue;
-      }
-    free_tokens(tokens);
+
+        printf("\n");
+        fflush(stdout);
     }
-    execute(&tokens);
 
-    printf("\n");
-    free_tokens(tokens);
-    fflush(stdout);
-  }
-
-  return 0;
+    return EXIT_SUCCESS;
 }
