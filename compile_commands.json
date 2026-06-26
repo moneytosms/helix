@@ -9,6 +9,22 @@
       "-Iinclude",
       "-o",
       "helix",
+      "src/builtins.c"
+    ],
+    "directory": "/mnt/d/Projects/helix",
+    "file": "/mnt/d/Projects/helix/src/builtins.c",
+    "output": "/mnt/d/Projects/helix/helix"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-g",
+      "-fsanitize=address",
+      "-Wall",
+      "-Iinclude",
+      "-o",
+      "helix",
       "src/executor.c"
     ],
     "directory": "/mnt/d/Projects/helix",
@@ -45,6 +61,22 @@
     ],
     "directory": "/mnt/d/Projects/helix",
     "file": "/mnt/d/Projects/helix/src/main.c",
+    "output": "/mnt/d/Projects/helix/helix"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-g",
+      "-fsanitize=address",
+      "-Wall",
+      "-Iinclude",
+      "-o",
+      "helix",
+      "src/parser.c"
+    ],
+    "directory": "/mnt/d/Projects/helix",
+    "file": "/mnt/d/Projects/helix/src/parser.c",
     "output": "/mnt/d/Projects/helix/helix"
   }
 ]

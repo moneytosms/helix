@@ -5,6 +5,76 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <string.h>
+static const CommandMap maps[] = {
+    {
+        .from = "ls",
+        .to = "eza",
+        .default_args = {
+            "--icons",
+            "--group-directories-first",
+            NULL
+        }
+    },
+    {
+        .from = "cat",
+        .to = "bat",
+        .default_args = {
+            "--paging=never",
+            NULL
+        }
+    },
+    {
+        .from = "find",
+        .to = "fd",
+        .default_args = { NULL }
+    },
+    {
+        .from = "grep",
+        .to = "rg",
+        .default_args = { NULL }
+    }
+};
+
+char **expand_command(Command *cmd)
+{
+    size_t num_maps = sizeof(maps) / sizeof(maps[0]);
+
+    for (size_t i = 0; i < num_maps; i++) {
+
+        if (strcmp(cmd->args[0], maps[i].from) != 0)
+            continue;
+
+        /* Count default arguments */
+        int defaults = 0;
+        while (maps[i].default_args[defaults] != NULL)
+            defaults++;
+
+
+        char **argv = malloc(
+            (cmd->num_args + defaults + 1) * sizeof(char *)
+        );
+
+        if (argv == NULL)
+            return NULL;
+
+        int k = 0;
+
+        argv[k++] = (char *)maps[i].to;
+
+        for (int j = 0; j < defaults; j++)
+            argv[k++] = (char *)maps[i].default_args[j];
+
+        for (int j = 1; j < cmd->num_args; j++)
+            argv[k++] = cmd->args[j];
+
+        argv[k] = NULL;
+
+        return argv;
+    }
+
+    return NULL;
+}
 
 int execute_pipeline(Pipeline *pipeline)
 {
@@ -127,8 +197,19 @@ int execute_pipeline(Pipeline *pipeline)
             if (is_builtin(cmd->args[0])) {
                 exit(run_builtin(cmd));
             }
-            execvp(cmd->args[0], cmd->args);
 
+            char **argv = expand_command(cmd);
+            
+            if (argv != NULL) {
+                execvp(argv[0], argv);
+            
+                perror(argv[0]);
+                free(argv);
+                exit(127);
+            }
+            
+            execvp(cmd->args[0], cmd->args);
+            
             perror(cmd->args[0]);
             exit(127);
         }

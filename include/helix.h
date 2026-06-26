@@ -37,4 +37,12 @@ void free_pipeline(Pipeline pipeline);
 int run_builtin(Command *cmd);
 int is_builtin(char *cmd);
 
+typedef struct {
+    const char *from;
+    const char *to;
+    const char *default_args[8];
+} CommandMap;
+
+char **expand_command(Command *cmd);
+
 #endif
