@@ -19,4 +19,20 @@ int run_builtin(TokenList tokens);
 
 extern int last_exit_status;
 
+typedef struct {
+  char **args;
+  char *infile;
+  char *outfile;
+  int append;
+  int num_args;
+}Command; 
+
+typedef struct {
+  Command *cmds;
+  int num_cmds;
+} Pipeline;
+
+
+
+
 #endif
