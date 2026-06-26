@@ -9,7 +9,7 @@ int main(void)
 {
     char input[1024];
     struct utsname info;
-
+    
     while (1) {
 
         if (uname(&info) == -1) {
@@ -32,6 +32,7 @@ int main(void)
 
         fflush(stdout);
 
+        
         if (!fgets(input, sizeof(input), stdin))
             break;
 
@@ -43,9 +44,14 @@ int main(void)
         }
 
         Pipeline pipeline = parse_pipeline(tokens.tokens);
-
+        
+        if (pipeline.cmds == NULL) {
+            free_tokens(tokens);
+            continue;
+        }
+        
         last_exit_status = execute_pipeline(&pipeline);
-
+        
         free_pipeline(pipeline);
         free_tokens(tokens);
 

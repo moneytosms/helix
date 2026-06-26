@@ -38,8 +38,16 @@ int execute_pipeline(Pipeline *pipeline)
         pid_t pid = fork();
 
         if (pid == -1) {
-            perror("fork");
-            return EXIT_FAILURE;
+          if (has_next) {
+              close(pipefd[0]);
+              close(pipefd[1]);
+          }
+      
+          if (prev_pipe_read != -1)
+              close(prev_pipe_read);
+      
+          perror("fork");
+          return EXIT_FAILURE;
         }
 
         if (pid == 0) {
@@ -86,12 +94,10 @@ int execute_pipeline(Pipeline *pipeline)
 
             if (cmd->outfile != NULL) {
 
-                int flags = O_WRONLY | O_CREAT;
-
-                if (cmd->append)
-                    flags |= O_APPEND;
-                else
-                    flags |= O_TRUNC;
+              int flags =
+                  O_WRONLY |
+                  O_CREAT |
+                  (cmd->append ? O_APPEND : O_TRUNC);
 
                 int fd = open(cmd->outfile, flags, 0644);
 
@@ -118,7 +124,9 @@ int execute_pipeline(Pipeline *pipeline)
                 close(pipefd[0]);
                 close(pipefd[1]);
             }
-
+            if (is_builtin(cmd->args[0])) {
+                exit(run_builtin(cmd));
+            }
             execvp(cmd->args[0], cmd->args);
 
             perror(cmd->args[0]);

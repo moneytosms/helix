@@ -3,6 +3,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+static int is_operator(char *tok)
+{
+    return tok &&
+           (!strcmp(tok, "|") ||
+            !strcmp(tok, "<") ||
+            !strcmp(tok, ">") ||
+            !strcmp(tok, ">>"));
+}
+
 Pipeline parse_pipeline(char **tokens)
 {
     Pipeline pipeline = {0};
@@ -15,11 +24,11 @@ Pipeline parse_pipeline(char **tokens)
     }
 
     pipeline.cmds = calloc(pipeline.num_cmds, sizeof(Command));
-
     if (pipeline.cmds == NULL) {
         perror("calloc");
-        exit(EXIT_FAILURE);
+        return pipeline;
     }
+
 
     int i = 0;
 
@@ -35,11 +44,14 @@ Pipeline parse_pipeline(char **tokens)
 
                 i++;
 
-                if (tokens[i] == NULL) {
+                if (tokens[i] == NULL || is_operator(tokens[i])) {
                     fprintf(stderr,
                             "syntax error: expected filename after '<'\n");
+                
                     free_pipeline(pipeline);
-                    exit(EXIT_FAILURE);
+                    pipeline.cmds = NULL;
+                    pipeline.num_cmds = 0;
+                    return pipeline;
                 }
 
                 curr->infile = tokens[i++];
@@ -49,11 +61,14 @@ Pipeline parse_pipeline(char **tokens)
 
                 i++;
 
-                if (tokens[i] == NULL) {
+                if (tokens[i] == NULL || is_operator(tokens[i])) {
                     fprintf(stderr,
-                            "syntax error: expected filename after '>'\n");
+                            "syntax error: expected filename after '<'\n");
+                
                     free_pipeline(pipeline);
-                    exit(EXIT_FAILURE);
+                    pipeline.cmds = NULL;
+                    pipeline.num_cmds = 0;
+                    return pipeline;
                 }
 
                 curr->outfile = tokens[i++];
@@ -64,11 +79,15 @@ Pipeline parse_pipeline(char **tokens)
 
                 i++;
 
-                if (tokens[i] == NULL) {
+                if (tokens[i] == NULL || is_operator(tokens[i])) {
                     fprintf(stderr,
-                            "syntax error: expected filename after '>>'\n");
+                            "syntax error: expected filename after '>'\n");
                     free_pipeline(pipeline);
-                    exit(EXIT_FAILURE);
+                    
+                    pipeline.cmds = NULL;
+                    pipeline.num_cmds = 0;
+                    
+                    return pipeline;
                 }
 
                 curr->outfile = tokens[i++];
@@ -83,9 +102,12 @@ Pipeline parse_pipeline(char **tokens)
                 );
 
                 if (tmp == NULL) {
-                    perror("realloc");
-                    free_pipeline(pipeline);
-                    exit(EXIT_FAILURE);
+                  perror("realloc");
+                  
+                  free_pipeline(pipeline);
+                  pipeline.cmds = NULL;
+                  pipeline.num_cmds = 0;
+                  return pipeline;
                 }
 
                 curr->args = tmp;
@@ -94,9 +116,14 @@ Pipeline parse_pipeline(char **tokens)
         }
 
         if (argc == 0) {
-            fprintf(stderr, "syntax error: empty command\n");
-            free_pipeline(pipeline);
-            exit(EXIT_FAILURE);
+          fprintf(stderr,
+                  "syntax error: empty command\n");
+          
+          free_pipeline(pipeline);
+          pipeline.cmds = NULL;
+          pipeline.num_cmds = 0;
+          return pipeline;
+            
         }
 
         curr->args[argc] = NULL;
