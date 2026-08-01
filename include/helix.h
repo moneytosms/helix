@@ -108,4 +108,16 @@ size_t display_width(const char *s);   /* printable columns, escapes skipped */
 int command_exists(const char *cmd);
 void highlight_print(const char *buf);
 
+/* ---------- dashboard ---------- */
+
+void render_dashboard(void);
+
+/* ---------- config ---------- */
+
+void config_load(void);
+const char *setting_get(const char *key);
+int setting_int(const char *key, int fallback);
+char **alias_lookup(const char *name);
+void alias_list(void);
+
 #endif

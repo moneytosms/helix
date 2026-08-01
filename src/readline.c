@@ -48,6 +48,11 @@ void history_add(const char *line)
 
 void history_load(void)
 {
+    history_limit = setting_int("HISTORY_SIZE", HISTORY_MAX);
+
+    if (history_limit < 1 || history_limit > HISTORY_MAX)
+        history_limit = HISTORY_MAX;
+
     const char *path = history_path();
 
     if (path == NULL)

@@ -54,7 +54,7 @@ int command_exists(const char *cmd)
     if (cmd[0] == '\0')
         return 0;
 
-    if (is_builtin((char *)cmd))
+    if (is_builtin((char *)cmd) || alias_lookup(cmd) != NULL)
         return 1;
 
     /* A path, not a bare name: ask the filesystem directly. */

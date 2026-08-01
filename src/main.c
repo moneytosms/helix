@@ -1,5 +1,5 @@
 #include "helix.h"
-#include "stdio.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -16,13 +16,44 @@ static double seconds_now(void)
     return ts.tv_sec + ts.tv_nsec / 1e9;
 }
 
-int main(void)
+static void usage(void)
 {
+    printf("usage: helix [--version] [--help]\n\n"
+           "  a small unix shell: pipes, redirection, job control,\n"
+           "  line editing with history, syntax highlighting and a\n"
+           "  ~/.helixrc for aliases and settings.\n\n"
+           "  builtins: cd exit pwd jobs fg bg history alias\n");
+}
+
+int main(int argc, char **argv)
+{
+    if (argc > 1) {
+
+        if (strcmp(argv[1], "--version") == 0) {
+            printf("helix %s\n", HELIX_VERSION);
+            return EXIT_SUCCESS;
+        }
+
+        if (strcmp(argv[1], "--help") == 0) {
+            usage();
+            return EXIT_SUCCESS;
+        }
+
+        fprintf(stderr, "helix: unknown option: %s\n", argv[1]);
+        return EXIT_FAILURE;
+    }
+
+    config_load();
     shell_init();
     history_load();
     atexit(history_save);
 
-    while (1) {
+    const char *dashboard = setting_get("DASHBOARD");
+
+    if (shell_interactive && (dashboard == NULL || strcmp(dashboard, "off") != 0))
+        render_dashboard();
+
+    for (;;) {
 
         /* Report background jobs that finished while we were away. */
         job_notify();

@@ -71,13 +71,14 @@ void shell_init(void)
     tcsetpgrp(STDIN_FILENO, shell_pgid);
 }
 
-char **expand_command(Command *cmd)
+/* Swap a command for its modern replacement, e.g. ls -> eza --icons. */
+static char **apply_map(char **args, int num_args)
 {
     size_t num_maps = sizeof(maps) / sizeof(maps[0]);
 
     for (size_t i = 0; i < num_maps; i++) {
 
-        if (strcmp(cmd->args[0], maps[i].from) != 0)
+        if (strcmp(args[0], maps[i].from) != 0)
             continue;
 
         /* Count default arguments */
@@ -87,7 +88,7 @@ char **expand_command(Command *cmd)
 
 
         char **argv = malloc(
-            (cmd->num_args + defaults + 1) * sizeof(char *)
+            (num_args + defaults + 1) * sizeof(char *)
         );
 
         if (argv == NULL)
@@ -100,8 +101,8 @@ char **expand_command(Command *cmd)
         for (int j = 0; j < defaults; j++)
             argv[k++] = (char *)maps[i].default_args[j];
 
-        for (int j = 1; j < cmd->num_args; j++)
-            argv[k++] = cmd->args[j];
+        for (int j = 1; j < num_args; j++)
+            argv[k++] = args[j];
 
         argv[k] = NULL;
 
@@ -109,6 +110,54 @@ char **expand_command(Command *cmd)
     }
 
     return NULL;
+}
+
+/*
+ * Returns a malloc'd argv with the ~/.helixrc alias and the command map
+ * applied, or NULL when the command needs neither. Aliases are expanded once,
+ * so an alias that names itself cannot loop.
+ */
+char **expand_command(Command *cmd)
+{
+    char **args = cmd->args;
+    int num_args = cmd->num_args;
+    char **aliased = NULL;
+
+    char **words = alias_lookup(args[0]);
+
+    if (words != NULL) {
+
+        int count = 0;
+        while (words[count] != NULL)
+            count++;
+
+        aliased = malloc((count + num_args) * sizeof(char *));
+
+        if (aliased == NULL)
+            return NULL;
+
+        int k = 0;
+
+        for (int j = 0; j < count; j++)
+            aliased[k++] = words[j];
+
+        for (int j = 1; j < num_args; j++)
+            aliased[k++] = args[j];
+
+        aliased[k] = NULL;
+
+        args = aliased;
+        num_args = k;
+    }
+
+    char **mapped = apply_map(args, num_args);
+
+    if (mapped != NULL) {
+        free(aliased);
+        return mapped;
+    }
+
+    return aliased;
 }
 
 /* Children must not inherit the SIG_IGN we set up for the shell. */
