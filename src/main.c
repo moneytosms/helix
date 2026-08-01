@@ -2,15 +2,22 @@
 #include "stdio.h"
 #include <stdlib.h>
 #include <string.h>
-#include <sys/utsname.h>
+#include <time.h>
 
 int last_exit_status=0;
+double last_duration=0;
+
+static double seconds_now(void)
+{
+    struct timespec ts;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    return ts.tv_sec + ts.tv_nsec / 1e9;
+}
 
 int main(void)
 {
-    char prompt[256];
-    struct utsname info;
-
     shell_init();
     history_load();
     atexit(history_save);
@@ -20,26 +27,14 @@ int main(void)
         /* Report background jobs that finished while we were away. */
         job_notify();
 
-        if (uname(&info) == -1) {
-            perror("uname");
-            return EXIT_FAILURE;
-        }
+        /* A blank line between the last command's output and the prompt. */
+        if (shell_interactive)
+            printf("\n");
 
-        char *hostname = info.nodename;
-        char *username = getenv("USER");
+        size_t width;
+        const char *prompt = render_prompt(&width);
 
-        const char *chevron =
-            (last_exit_status == 0)
-                ? "\033[32m❯"
-                : "\033[31m❯";
-
-        snprintf(prompt, sizeof(prompt),
-                 "\033[36m%s \033[0mon \033[33m%s %s \033[0m",
-                 username,
-                 hostname,
-                 chevron);
-
-        char *line = helix_readline(prompt);
+        char *line = helix_readline(prompt, width);
 
         if (line == NULL) {
             printf("\n");
@@ -58,7 +53,12 @@ int main(void)
             Pipeline pipeline = parse_pipeline(tokens.tokens);
 
             if (pipeline.cmds != NULL) {
+
+                double started = seconds_now();
+
                 last_exit_status = execute_pipeline(&pipeline, original);
+                last_duration = seconds_now() - started;
+
                 free_pipeline(pipeline);
             } else {
                 last_exit_status = 2;   /* syntax error */

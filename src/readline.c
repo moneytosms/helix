@@ -98,35 +98,6 @@ void history_print(void)
 
 /* ---------- raw mode ---------- */
 
-/*
- * Colour escapes take no space on screen, and a UTF-8 character is one column
- * however many bytes it needs.
- */
-static size_t visible_width(const char *s)
-{
-    size_t width = 0;
-
-    while (*s != '\0') {
-
-        if (*s == '\033') {
-            while (*s != '\0' && *s != 'm')
-                s++;
-
-            if (*s != '\0')
-                s++;
-
-            continue;
-        }
-
-        if (((unsigned char)*s & 0xC0) != 0x80)
-            width++;
-
-        s++;
-    }
-
-    return width;
-}
-
 static int raw_mode_on(void)
 {
     struct termios raw;
@@ -183,13 +154,12 @@ static void load_history_entry(char *buf, int *len, int *cursor, int pos)
 }
 
 /*
- * Reads one line with editing and history. Returns a malloc'd string the
- * caller owns, or NULL on end of input.
+ * Reads one line with editing and history. Returns a
+ * malloc'd string the caller owns, or NULL on end of input.
+ * prompt_width is the printable width of prompt, needed to place the cursor.
  */
-char *helix_readline(const char *prompt)
+char *helix_readline(const char *prompt, size_t prompt_width)
 {
-    size_t prompt_width = visible_width(prompt);
-
     /* No terminal (a script piping into us): plain line reads will do. */
     if (!shell_interactive || raw_mode_on() == -1) {
 

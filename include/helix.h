@@ -58,6 +58,7 @@ void shell_init(void);
 extern int last_exit_status;
 extern pid_t shell_pgid;
 extern int shell_interactive;
+extern double last_duration;    /* how long the last command ran, in seconds */
 
 /* ---------- builtins ---------- */
 
@@ -91,10 +92,15 @@ int job_background(Job *job);   /* SIGCONT and leave it running */
 
 /* ---------- readline ---------- */
 
-char *helix_readline(const char *prompt);
+char *helix_readline(const char *prompt, size_t prompt_width);
 void history_add(const char *line);
 void history_load(void);
 void history_save(void);
 void history_print(void);
+
+/* ---------- prompt ---------- */
+
+const char *render_prompt(size_t *width);
+size_t display_width(const char *s);   /* printable columns, escapes skipped */
 
 #endif
