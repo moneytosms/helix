@@ -1,6 +1,6 @@
 CC = gcc
 
-CFLAGS = -g -fsanitize=address -Wall -Iinclude
+CFLAGS = -g -fsanitize=address -Wall -Wextra -Iinclude
 SRC = $(wildcard src/*.c)
 
 helix: $(SRC)

@@ -4,8 +4,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <string.h>
+
+pid_t shell_pgid = 0;
+int shell_interactive = 0;
+
 static const CommandMap maps[] = {
     {
         .from = "ls",
@@ -35,6 +40,36 @@ static const CommandMap maps[] = {
         .default_args = { NULL }
     }
 };
+
+/*
+ * Put the shell in its own process group and give it the terminal, so that
+ * every job we fork can own the terminal in turn. The Ctrl+C and
+ * Ctrl+Z keys are then delivered by the kernel straight to whichever group
+ * holds it, so the shell never has to forward them by hand.
+ */
+void shell_init(void)
+{
+    shell_pgid = getpid();
+    shell_interactive = isatty(STDIN_FILENO);
+
+    if (!shell_interactive)
+        return;
+
+    signal(SIGINT,  SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGTTIN, SIG_IGN);
+    signal(SIGTTOU, SIG_IGN);
+
+    /* EPERM here just means we already lead a group, e.g. a session leader. */
+    if (setpgid(shell_pgid, shell_pgid) == -1 && getpgrp() != shell_pgid) {
+        perror("setpgid");
+        shell_interactive = 0;
+        return;
+    }
+
+    tcsetpgrp(STDIN_FILENO, shell_pgid);
+}
 
 char **expand_command(Command *cmd)
 {
@@ -76,12 +111,73 @@ char **expand_command(Command *cmd)
     return NULL;
 }
 
-int execute_pipeline(Pipeline *pipeline)
+/* Children must not inherit the SIG_IGN we set up for the shell. */
+static void child_signals(void)
+{
+    signal(SIGINT,  SIG_DFL);
+    signal(SIGQUIT, SIG_DFL);
+    signal(SIGTSTP, SIG_DFL);
+    signal(SIGTTIN, SIG_DFL);
+    signal(SIGTTOU, SIG_DFL);
+}
+
+static int wait_foreground(pid_t pgid, pid_t *pids, int num_pids,
+                           const char *cmdline)
+{
+    int status = 0;
+
+    if (shell_interactive)
+        tcsetpgrp(STDIN_FILENO, pgid);
+
+    for (int i = 0; i < num_pids; i++) {
+
+        if (waitpid(pids[i], &status, WUNTRACED) == -1) {
+            perror("waitpid");
+            status = -1;
+            break;
+        }
+
+        /* Ctrl+Z: the job keeps living, so hand it to the jobs table. */
+        if (WIFSTOPPED(status)) {
+
+            int id = job_add(pgid, cmdline, JOB_STOPPED);
+
+            printf("\n[%d]+  Stopped\t%s\n", id, cmdline);
+
+            if (shell_interactive)
+                tcsetpgrp(STDIN_FILENO, shell_pgid);
+
+            return 128 + SIGTSTP;
+        }
+    }
+
+    if (shell_interactive)
+        tcsetpgrp(STDIN_FILENO, shell_pgid);
+
+    if (WIFEXITED(status))
+        return WEXITSTATUS(status);
+
+    if (WIFSIGNALED(status)) {
+        if (WTERMSIG(status) == SIGINT)
+            printf("\n");
+        return 128 + WTERMSIG(status);
+    }
+
+    return EXIT_FAILURE;
+}
+
+int execute_pipeline(Pipeline *pipeline, const char *cmdline)
 {
     if (pipeline == NULL || pipeline->num_cmds == 0)
         return EXIT_SUCCESS;
 
+    /*
+     * A builtin only runs inside the shell when it is the whole line. Inside
+     * a pipeline it has to be forked like any other command, or its output
+     * could not be piped anywhere.
+     */
     if (pipeline->num_cmds == 1 &&
+        !pipeline->background &&
         pipeline->cmds[0].args != NULL &&
         is_builtin(pipeline->cmds[0].args[0]))
     {
@@ -90,6 +186,7 @@ int execute_pipeline(Pipeline *pipeline)
 
     int prev_pipe_read = -1;
     pid_t pids[pipeline->num_cmds];
+    pid_t pgid = 0;
 
     for (int i = 0; i < pipeline->num_cmds; i++) {
 
@@ -112,15 +209,24 @@ int execute_pipeline(Pipeline *pipeline)
               close(pipefd[0]);
               close(pipefd[1]);
           }
-      
+
           if (prev_pipe_read != -1)
               close(prev_pipe_read);
-      
+
           perror("fork");
           return EXIT_FAILURE;
         }
 
         if (pid == 0) {
+
+            /* ---------- Job control ---------- */
+
+            /*
+             * Both sides set the group: whichever runs first wins the race,
+             * and the loser's call is a no-op.
+             */
+            setpgid(0, pgid ? pgid : getpid());
+            child_signals();
 
             /* ---------- Pipeline input ---------- */
 
@@ -199,24 +305,29 @@ int execute_pipeline(Pipeline *pipeline)
             }
 
             char **argv = expand_command(cmd);
-            
+
             if (argv != NULL) {
                 execvp(argv[0], argv);
-            
+
                 perror(argv[0]);
                 free(argv);
                 exit(127);
             }
-            
+
             execvp(cmd->args[0], cmd->args);
-            
-            perror(cmd->args[0]);
+
+            fprintf(stderr, "helix: %s: command not found\n", cmd->args[0]);
             exit(127);
         }
 
         /* ---------- Parent ---------- */
 
         pids[i] = pid;
+
+        if (pgid == 0)
+            pgid = pid;
+
+        setpgid(pid, pgid);
 
         if (prev_pipe_read != -1)
             close(prev_pipe_read);
@@ -229,19 +340,16 @@ int execute_pipeline(Pipeline *pipeline)
         }
     }
 
-    int status = 0;
+    if (pipeline->background) {
 
-    for (int i = 0; i < pipeline->num_cmds; i++) {
-        if (waitpid(pids[i], &status, 0) == -1) {
-            perror("waitpid");
-            return EXIT_FAILURE;
-        }
+        int id = job_add(pgid, cmdline, JOB_RUNNING);
+
+        printf("[%d] %d\n", id, pgid);
+
+        return EXIT_SUCCESS;
     }
 
-    if (WIFEXITED(status))
-        return WEXITSTATUS(status);
-
-    return EXIT_FAILURE;
+    return wait_foreground(pgid, pids, pipeline->num_cmds, cmdline);
 }
 
 void free_pipeline(Pipeline pipeline)

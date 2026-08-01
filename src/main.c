@@ -1,6 +1,7 @@
 #include "helix.h"
 #include "stdio.h"
 #include <stdlib.h>
+#include <string.h>
 #include <sys/utsname.h>
 
 int last_exit_status=0;
@@ -9,8 +10,13 @@ int main(void)
 {
     char input[1024];
     struct utsname info;
-    
+
+    shell_init();
+
     while (1) {
+
+        /* Report background jobs that finished while we were away. */
+        job_notify();
 
         if (uname(&info) == -1) {
             perror("uname");
@@ -32,28 +38,36 @@ int main(void)
 
         fflush(stdout);
 
-        
+
         if (!fgets(input, sizeof(input), stdin))
             break;
+
+        /* tokenize() chops the line up, so keep a copy for the jobs table. */
+        char *original = strdup(input);
+
+        original[strcspn(original, "\n")] = '\0';
 
         TokenList tokens = tokenize(input);
 
         if (tokens.tokens[0] == NULL) {
             free_tokens(tokens);
+            free(original);
             continue;
         }
 
         Pipeline pipeline = parse_pipeline(tokens.tokens);
-        
+
         if (pipeline.cmds == NULL) {
             free_tokens(tokens);
+            free(original);
             continue;
         }
-        
-        last_exit_status = execute_pipeline(&pipeline);
-        
+
+        last_exit_status = execute_pipeline(&pipeline, original);
+
         free_pipeline(pipeline);
         free_tokens(tokens);
+        free(original);
 
         printf("\n");
         fflush(stdout);

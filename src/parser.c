@@ -18,6 +18,22 @@ Pipeline parse_pipeline(char **tokens)
 
     pipeline.num_cmds = 1;
 
+    /* A trailing '&' turns the whole pipeline into a background job. */
+    int last = 0;
+    while (tokens[last] != NULL)
+        last++;
+
+    if (last > 0 && strcmp(tokens[last - 1], "&") == 0) {
+        pipeline.background = 1;
+        tokens[last - 1] = NULL;
+
+        if (tokens[0] == NULL) {
+            fprintf(stderr, "syntax error: empty command\n");
+            pipeline.num_cmds = 0;
+            return pipeline;
+        }
+    }
+
     for (int i = 0; tokens[i] != NULL; i++) {
         if (strcmp(tokens[i], "|") == 0)
             pipeline.num_cmds++;
