@@ -89,4 +89,12 @@ void jobs_list(void);
 int job_foreground(Job *job);   /* hand over the terminal and wait */
 int job_background(Job *job);   /* SIGCONT and leave it running */
 
+/* ---------- readline ---------- */
+
+char *helix_readline(const char *prompt);
+void history_add(const char *line);
+void history_load(void);
+void history_save(void);
+void history_print(void);
+
 #endif

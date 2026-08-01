@@ -8,10 +8,12 @@ int last_exit_status=0;
 
 int main(void)
 {
-    char input[1024];
+    char prompt[256];
     struct utsname info;
 
     shell_init();
+    history_load();
+    atexit(history_save);
 
     while (1) {
 
@@ -31,47 +33,42 @@ int main(void)
                 ? "\033[32m❯"
                 : "\033[31m❯";
 
-        printf("\033[36m%s \033[0mon \033[33m%s %s \033[0m",
-               username,
-               hostname,
-               chevron);
+        snprintf(prompt, sizeof(prompt),
+                 "\033[36m%s \033[0mon \033[33m%s %s \033[0m",
+                 username,
+                 hostname,
+                 chevron);
 
-        fflush(stdout);
+        char *line = helix_readline(prompt);
 
-
-        if (!fgets(input, sizeof(input), stdin))
+        if (line == NULL) {
+            printf("\n");
             break;
-
-        /* tokenize() chops the line up, so keep a copy for the jobs table. */
-        char *original = strdup(input);
-
-        original[strcspn(original, "\n")] = '\0';
-
-        TokenList tokens = tokenize(input);
-
-        if (tokens.tokens[0] == NULL) {
-            free_tokens(tokens);
-            free(original);
-            continue;
         }
 
-        Pipeline pipeline = parse_pipeline(tokens.tokens);
+        /* tokenize() chops the line up, so keep a copy for history and jobs. */
+        char *original = strdup(line);
 
-        if (pipeline.cmds == NULL) {
-            free_tokens(tokens);
-            free(original);
-            continue;
+        TokenList tokens = tokenize(line);
+
+        if (tokens.tokens[0] != NULL) {
+
+            history_add(original);
+
+            Pipeline pipeline = parse_pipeline(tokens.tokens);
+
+            if (pipeline.cmds != NULL) {
+                last_exit_status = execute_pipeline(&pipeline, original);
+                free_pipeline(pipeline);
+            } else {
+                last_exit_status = 2;   /* syntax error */
+            }
         }
 
-        last_exit_status = execute_pipeline(&pipeline, original);
-
-        free_pipeline(pipeline);
         free_tokens(tokens);
         free(original);
-
-        printf("\n");
-        fflush(stdout);
+        free(line);
     }
 
-    return EXIT_SUCCESS;
+    return last_exit_status;
 }

@@ -7,7 +7,8 @@
 
 int is_builtin(char *cmd) {
   return (!strcmp(cmd,"cd")|| !strcmp(cmd,"exit")|| !strcmp(cmd,"pwd")||
-          !strcmp(cmd,"jobs")|| !strcmp(cmd,"fg")|| !strcmp(cmd,"bg"));
+          !strcmp(cmd,"jobs")|| !strcmp(cmd,"fg")|| !strcmp(cmd,"bg")||
+          !strcmp(cmd,"history"));
 }
 
 /* `fg 2` picks job 2, plain `fg` picks the most recent one. */
@@ -98,6 +99,11 @@ int run_builtin(Command *cmd)
             return EXIT_FAILURE;
 
         return job_background(job);
+    }
+
+    if (!strcmp(name, "history")) {
+        history_print();
+        return EXIT_SUCCESS;
     }
 
     if (!strcmp(name, "exit")) {
