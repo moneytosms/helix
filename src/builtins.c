@@ -31,9 +31,21 @@ int run_builtin(Command *cmd)
     if (!strcmp(name, "cd")) {
 
         char *path = cmd->args[1];
+        char expanded[1024];
 
         if (path == NULL)
             path = getenv("HOME");
+
+        /* ~ and ~/somewhere, the only expansion the shell does so far. */
+        if (path != NULL && path[0] == '~') {
+
+            const char *home = getenv("HOME");
+
+            snprintf(expanded, sizeof(expanded), "%s%s",
+                     home ? home : "", path + 1);
+
+            path = expanded;
+        }
 
         if (chdir(path) != 0) {
             perror("cd");
