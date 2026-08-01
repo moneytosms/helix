@@ -103,4 +103,9 @@ void history_print(void);
 const char *render_prompt(size_t *width);
 size_t display_width(const char *s);   /* printable columns, escapes skipped */
 
+/* ---------- highlight ---------- */
+
+int command_exists(const char *cmd);
+void highlight_print(const char *buf);
+
 #endif

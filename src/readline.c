@@ -129,7 +129,8 @@ static void raw_mode_off(void)
 static void redraw(const char *prompt, size_t prompt_width,
                    const char *buf, int cursor)
 {
-    printf("\r\033[K%s%s", prompt, buf);
+    printf("\r\033[K%s", prompt);
+    highlight_print(buf);
 
     printf("\r");
 
@@ -154,7 +155,7 @@ static void load_history_entry(char *buf, int *len, int *cursor, int pos)
 }
 
 /*
- * Reads one line with editing and history. Returns a
+ * Reads one line with editing, history and live highlighting. Returns a
  * malloc'd string the caller owns, or NULL on end of input.
  * prompt_width is the printable width of prompt, needed to place the cursor.
  */
