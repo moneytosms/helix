@@ -1,5 +1,9 @@
 # helix
 
+![C](https://img.shields.io/badge/language-C-555555)
+![Dependencies](https://img.shields.io/badge/dependencies-libc%20only-brightgreen)
+![Platform](https://img.shields.io/badge/platform-Linux-informational)
+
 A Unix shell written from scratch in C. No libraries beyond libc: the pipeline
 executor, job control, line editor, history, syntax highlighter and prompt are
 all hand written.
@@ -18,6 +22,21 @@ all hand written.
 
  sms on Aether at …/Projects/helix via  main * ⇡6 ❯ ls | grep .c
 ```
+
+## Highlights
+
+- Pipelines of any length, per-command redirection (`>` `>>` `<`)
+- Real job control: process groups, `Ctrl+Z`, `bg`, `fg`, `jobs`
+- Hand-written raw-mode line editor with persistent history
+- Live syntax highlighting: green for found commands, red for missing
+- Git-aware prompt with dirty and ahead/behind markers, exit status and timing
+- Startup dashboard (CPU, memory, disk, uptime) read from `/proc`
+- `~/.helixrc` for aliases and settings
+- Zero dependencies beyond libc
+
+## Requirements
+
+Linux (reads `/proc`), `gcc` and `make`. `git` is needed for the prompt's branch info. `eza`, `bat`, `fd` and `rg` are used when installed.
 
 ## Build
 
@@ -131,6 +150,10 @@ src/
 include/
   helix.h       every shared type and prototype
 ```
+
+## Roadmap
+
+Quote-aware lexing, globbing, variable expansion, `&&` / `||` / `;`, tab completion.
 
 ## Notes and limits
 
