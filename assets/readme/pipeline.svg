@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-labelledby="t d">
+  <title id="t">How helix runs a line</title>
+  <desc id="d">A typed line goes through readline, lexer and parser into a Pipeline. The executor forks one process per stage, wires pipes, puts them in one process group and hands them the terminal. The jobs table tracks them.</desc>
+  <rect width="1200" height="340" rx="26" fill="#0d1014"/>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" text-anchor="middle">
+    <g fill="#161b22" stroke="#2a313b">
+      <rect x="40" y="60" width="180" height="64" rx="12"/><rect x="260" y="60" width="180" height="64" rx="12"/><rect x="480" y="60" width="180" height="64" rx="12"/><rect x="700" y="60" width="220" height="64" rx="12"/><rect x="960" y="60" width="200" height="64" rx="12"/>
+    </g>
+    <g fill="#e6edf3">
+      <text x="130" y="100">readline.c</text><text x="350" y="100">lexer.c</text><text x="570" y="100">parser.c</text><text x="810" y="100" fill="#3fb950">executor.c</text><text x="1060" y="100">jobs.c</text>
+    </g>
+    <g stroke="#3fb950" stroke-width="3" stroke-linecap="round"><path d="M222 92 H258"/><path d="M442 92 H478"/><path d="M662 92 H698"/><path d="M922 92 H958"/></g>
+    <g font-size="15" fill="#6b7785"><text x="130" y="150">raw-mode bytes</text><text x="350" y="150">tokens</text><text x="570" y="150">Pipeline</text><text x="810" y="150">fork · exec · pipes</text><text x="1060" y="150">process groups</text></g>
+    <g transform="translate(60 200)">
+      <text x="0" y="22" text-anchor="start" font-size="16" fill="#6b7785">cat file | sort | uniq | wc -l</text>
+      <g fill="#161b22" stroke="#3fb950"><rect x="0" y="44" width="150" height="48" rx="10"/><rect x="250" y="44" width="150" height="48" rx="10"/><rect x="500" y="44" width="150" height="48" rx="10"/><rect x="750" y="44" width="150" height="48" rx="10"/></g>
+      <g fill="#e6edf3"><text x="75" y="75">cat</text><text x="325" y="75">sort</text><text x="575" y="75">uniq</text><text x="825" y="75">wc</text></g>
+      <g stroke="#79c0ff" stroke-width="3" stroke-linecap="round"><path d="M152 68 H248"/><path d="M402 68 H498"/><path d="M652 68 H748"/></g>
+      <g fill="#79c0ff" font-size="14"><text x="200" y="60">pipe</text><text x="450" y="60">pipe</text><text x="700" y="60">pipe</text></g>
+      <text x="930" y="68" font-size="15" fill="#6b7785" text-anchor="start">one process</text>
+      <text x="930" y="90" font-size="15" fill="#6b7785" text-anchor="start">group, owns tty</text>
+    </g>
+  </g>
+</svg>

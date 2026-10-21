@@ -1,23 +1,32 @@
-# helix
+<h1 align="center">helix</h1>
+
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="helix: a Unix shell written from scratch in C, shown with its startup dashboard and git-aware prompt.">
+</p>
+
+![C](https://img.shields.io/badge/language-C-555555)
+![Dependencies](https://img.shields.io/badge/dependencies-libc%20only-brightgreen)
+![Platform](https://img.shields.io/badge/platform-Linux-informational)
 
 A Unix shell written from scratch in C. No libraries beyond libc: the pipeline
 executor, job control, line editor, history, syntax highlighter and prompt are
 all hand written.
 
-```
-╔══════════════════════════════════════════════╗
-║ helix v1.0.0   a shell of your own           ║
-╠══════════════════════════════════════════════╣
-║ CPU   █░░░░░░░░░    8%                       ║
-║ MEM   ██░░░░░░░░   18%   7.6 GB              ║
-║ DISK  ░░░░░░░░░░    4%                       ║
-╠══════════════════════════════════════════════╣
-║ Uptime  0d 2h 8m                             ║
-║ User    sms                                  ║
-╚══════════════════════════════════════════════╝
 
- sms on Aether at …/Projects/helix via  main * ⇡6 ❯ ls | grep .c
-```
+## Highlights
+
+- Pipelines of any length, per-command redirection (`>` `>>` `<`)
+- Real job control: process groups, `Ctrl+Z`, `bg`, `fg`, `jobs`
+- Hand-written raw-mode line editor with persistent history
+- Live syntax highlighting: green for found commands, red for missing
+- Git-aware prompt with dirty and ahead/behind markers, exit status and timing
+- Startup dashboard (CPU, memory, disk, uptime) read from `/proc`
+- `~/.helixrc` for aliases and settings
+- Zero dependencies beyond libc
+
+## Requirements
+
+Linux (reads `/proc`), `gcc` and `make`. `git` is needed for the prompt's branch info. `eza`, `bat`, `fd` and `rg` are used when installed.
 
 ## Build
 
@@ -113,6 +122,12 @@ If a modern replacement is installed, helix uses it: `ls` runs `eza --icons
 --group-directories-first`, `cat` runs `bat --paging=never`, `find` runs `fd`,
 `grep` runs `rg`. The table lives at the top of `src/executor.c`.
 
+## How a line runs
+
+<p align="center">
+  <img src="./assets/readme/pipeline.svg" width="100%" alt="readline to lexer to parser to executor to jobs; a pipeline forks one process per stage, joined by pipes, in one process group.">
+</p>
+
 ## Layout
 
 ```
@@ -131,6 +146,10 @@ src/
 include/
   helix.h       every shared type and prototype
 ```
+
+## Roadmap
+
+Quote-aware lexing, globbing, variable expansion, `&&` / `||` / `;`, tab completion.
 
 ## Notes and limits
 
